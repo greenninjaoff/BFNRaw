@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+/* Hide scrollbar but keep scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.dragging {
+  cursor: grabbing !important;
+}
+
+/* ✅ Design tokens */
+@layer base {
+  :root {
+    /* LIGHT (keep simple for now) */
+    --bg: 255 255 255;
+    --text: 17 24 39;
+    --muted: 107 114 128;
+    --card: 243 244 246;
+    --surface: 249 250 251;
+    --border: 229 231 235;
+
+    --btn-bg: 163 230 53;
+    --btn-bg-hover: 77 124 15;
+    --btn-text: 255 255 255;
+
+    --success: 52 199 89;
+    --error: 255 69 58;
+  }
+
+  html.dark {
+    /* 🖤 Main background */
+    --bg: 15 15 16;
+
+    /* 🪟 Cards / sections */
+    --card: 23 24 26;
+    --surface: 30 31 34;
+
+    /* 🧱 Borders */
+    --border: 42 43 46;
+
+    /* 📝 Text hierarchy */
+    --text: 255 255 255;
+    --muted: 181 181 183;
+
+    --btn-bg: 163 230 53;
+    --btn-bg-hover: 77 124 15;
+    --btn-text: 0 0 0;
+
+    /* Status */
+    --success: 52 199 89;
+    --error: 255 69 58;
+  }
+
+  body {
+    background: rgb(var(--bg));
+    color: rgb(var(--text));
+  }
+}

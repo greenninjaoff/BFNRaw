@@ -1,0 +1,298 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPERADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  SOFT_DELETE
+  RESTORE
+}
+
+enum DeliveryType {
+  STANDARD
+  PRIORITY
+}
+
+enum PaymentMethod {
+  CARD
+  PAYME
+  CLICK
+  CASH
+}
+
+enum NotificationType {
+  INFO
+  ORDER
+  PROMO
+  SYSTEM
+}
+
+model User {
+  id       String  @id @default(cuid())
+  phone    String  @unique
+  password String
+  fullName String?
+
+  role            Role      @default(USER)
+  isPhoneVerified Boolean   @default(false)
+  isBlocked       Boolean   @default(false)
+  lastLoginAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses     Address[]
+  orders        Order[]
+  audits        AuditLog[]     @relation("AuditActor")
+  sessions      Session[]
+  notifications Notification[]
+
+  @@index([phone])
+}
+
+model Address {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title    String?
+  fullName String?
+  phone    String?
+
+  city                 String?
+  district             String?
+  street               String?
+  house                String?
+  apartment            String?
+  landmark             String?
+  deliveryInstructions String?
+
+  lat Decimal? @db.Decimal(10, 7)
+  lng Decimal? @db.Decimal(10, 7)
+
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([userId])
+}
+
+model Category {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+
+  @@unique([name])
+}
+
+model Product {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+  imageUrl    String?
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  variants ProductFlavor[]
+
+  @@unique([categoryId, name])
+  @@index([categoryId])
+  @@index([slug])
+}
+
+model ProductFlavor {
+  id  String @id @default(cuid())
+  sku String @unique
+
+  flavorKey  String
+  flavorName String?
+  netWeight  String?
+
+  price          Int
+  compareAtPrice Int?
+
+  stock    Int     @default(0)
+  imageUrl String?
+
+  i18n Json?
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems OrderItem[]
+
+  @@unique([productId, flavorKey, netWeight])
+  @@index([productId])
+  @@index([sku])
+}
+
+model Order {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  status        OrderStatus    @default(PENDING)
+  deliveryType  DeliveryType   @default(STANDARD)
+  paymentMethod PaymentMethod?
+
+  customerName  String?
+  customerPhone String?
+
+  addressId String?
+  address   Address? @relation(fields: [addressId], references: [id], onDelete: SetNull)
+
+  city                 String?
+  district             String?
+  street               String?
+  house                String?
+  apartment            String?
+  landmark             String?
+  deliveryInstructions String?
+
+  subtotalAmount Int @default(0)
+  deliveryFee    Int @default(0)
+  serviceFee     Int @default(0)
+  priorityFee    Int @default(0)
+  discountAmount Int @default(0)
+  totalAmount    Int
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items OrderItem[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([addressId])
+}
+
+model OrderItem {
+  id String @id @default(cuid())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  flavorId String
+  flavor   ProductFlavor @relation(fields: [flavorId], references: [id], onDelete: Restrict)
+
+  quantity Int
+
+  unitPrice         Int
+  skuSnapshot       String
+  nameSnapshot      String
+  flavorSnapshot    String?
+  netWeightSnapshot String?
+  imageSnapshot     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([flavorId])
+}
+
+model Notification {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    NotificationType @default(INFO)
+  title   String
+  message String
+
+  isRead Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, isRead])
+}
+
+model Session {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  refreshToken String   @unique
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+
+  actorId String?
+  actor   User?   @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  action AuditAction
+
+  entityType String
+  entityId   String
+
+  before Json?
+  after  Json?
+
+  ip        String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+}
